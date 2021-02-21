@@ -38,6 +38,7 @@
 #import "GNConfigPreferences.h"
 #import "GNBackgroundAudio.h"
 #import "GonativeIO-Swift.h"
+#import <sys/sysctl.h>
 
 #define OFFLINE_URL @"http://offline/"
 
@@ -995,15 +996,86 @@ float HAD_DARK_THEME = false;
     return edict;
 }
 
+
+
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler
 {
     
+    
+    NSString *uniqueIdentifier = [[[UIDevice currentDevice] identifierForVendor] UUIDString];
+    
+    NSString *ioSversion = [[UIDevice currentDevice] systemVersion];
+    ioSversion = [ioSversion stringByReplacingOccurrencesOfString:@"." withString:@"_"];
+
+    size_t size;
+        sysctlbyname("hw.machine", NULL, &size, NULL, 0);
+        char *machine = malloc(size);
+        sysctlbyname("hw.machine", machine, &size, NULL, 0);
+        NSString *platform = [NSString stringWithCString:machine encoding:NSUTF8StringEncoding];
+
+    
+    NSNumberFormatter * formatter = [[NSNumberFormatter alloc] init];
+    [formatter setMaximumFractionDigits:0];
+    
+    NSString *DeviceWIdth = [NSString stringWithFormat:@"%@", [formatter stringFromNumber:[NSNumber numberWithDouble:[UIScreen mainScreen].currentMode.size.width]]];
+    NSString *DeviceHeight = [NSString stringWithFormat:@"%@", [formatter stringFromNumber:[NSNumber numberWithDouble:[UIScreen mainScreen].currentMode.size.height]]];
+
+    NSString* ScaleDev = [NSString stringWithFormat:@"%.02f", [UIScreen mainScreen].scale];
+    
+
+//    NSLog(@"DEVICE ID: %@", uniqueIdentifier);
+//    NSLog(@"DEVICE ios: %@", ioSversion);
+//    NSLog(@"DEVICE model: %@", platform);
+//    NSLog(@"DEVICE dpi: %@x%@", DeviceWIdth, DeviceHeight);
+//    NSLog(@"DEVICE DPI: %@", ScaleDev);
+
+    NSData *plainData = [uniqueIdentifier dataUsingEncoding:NSUTF8StringEncoding];
+    uniqueIdentifier = [plainData base64EncodedStringWithOptions:0];
+    
+    NSString* DeviceData = [NSString stringWithFormat:@"{\"iosv\":\"%@\",\"model\":\"%@\",\"dpi\":\"%@x%@\",\"scale\":\"%@\"}",ioSversion,platform,DeviceWIdth,DeviceHeight,ScaleDev];
+        
+    NSData *plainData2 = [DeviceData dataUsingEncoding:NSUTF8StringEncoding];
+    DeviceData = [plainData2 base64EncodedStringWithOptions:0];
+    
     if (@available(iOS 11.0, *)) {
         WKHTTPCookieStore *cookieStore = _wkWebview.configuration.websiteDataStore.httpCookieStore;
+
+//CREATE COOKIE
+        NSMutableDictionary* cookieProperties = [NSMutableDictionary dictionary];
+        //set rest of the properties
+        [cookieProperties setObject:@"device_id" forKey:NSHTTPCookieName];
+        [cookieProperties setObject:uniqueIdentifier forKey:NSHTTPCookieValue];
+        [cookieProperties setObject:@"/" forKey:NSHTTPCookiePath];
+        [cookieProperties setObject:@"postearly.com" forKey:NSHTTPCookieDomain];
+        //create a NSDate for some future time
+        NSDate* expiryDate = [[NSDate date] dateByAddingTimeInterval:2629743];
+        [cookieProperties setObject:expiryDate forKey:NSHTTPCookieExpires];
+        [cookieProperties setObject:@"TRUE" forKey:NSHTTPCookieSecure];
+        NSHTTPCookie *NewCookiecookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
+        [cookieStore setCookie:NewCookiecookie completionHandler: nil];
+        
+        
+        
+        cookieProperties = [NSMutableDictionary dictionary];
+        //set rest of the properties
+        [cookieProperties setObject:@"device_fromapp" forKey:NSHTTPCookieName];
+        [cookieProperties setObject:DeviceData forKey:NSHTTPCookieValue];
+        [cookieProperties setObject:@"/" forKey:NSHTTPCookiePath];
+        [cookieProperties setObject:@"postearly.com" forKey:NSHTTPCookieDomain];
+        //create a NSDate for some future time
+        expiryDate = [[NSDate date] dateByAddingTimeInterval:2629743];
+        [cookieProperties setObject:expiryDate forKey:NSHTTPCookieExpires];
+        [cookieProperties setObject:@"TRUE" forKey:NSHTTPCookieSecure];
+        NewCookiecookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
+        [cookieStore setCookie:NewCookiecookie completionHandler: nil];
+//CREATE COOKIE
+        
         [cookieStore getAllCookies:^(NSArray<NSHTTPCookie *> * _Nonnull cookies) {
            NSHTTPCookie *cookie;
+            
             for (cookie in cookies)
             {
+                
                 if ([[cookie valueForKey:@"name"]  isEqual: @"nplh"]){
                     USER_HASH_ADS = [cookie valueForKey:@"value"];
                     NSString *URL_GETINFO = [NSString stringWithFormat:@"https://postearly.com/getuserinfofromcookie/%@", USER_HASH_ADS];
@@ -1053,7 +1125,7 @@ float HAD_DARK_THEME = false;
                         
                         THEME_CHANGED = false;
                 
-                                           }];
+                }];
                     
                     
                     
