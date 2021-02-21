@@ -169,6 +169,18 @@
         if ([appConfig.iosTheme isEqualToString:@"dark"]) {
             bar.barStyle = UIBarStyleBlack;
         }
+        
+//        bar.barStyle = UIStatusBarStyleLightContent;
+//        [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent animated:YES];
+//        bar.backgroundColor = [UIColor colorWithRed:48.0f/255.0f green:48.0f/255.0f blue:48.0f/255.0f alpha:1.0];
+
+        bar.barStyle = UIStatusBarStyleDefault;
+        [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleDefault animated:YES];
+        bar.backgroundColor = [UIColor colorWithRed:250.0f/255.0f green:250.0f/255.0f blue:250.0f/255.0f alpha:1.0];
+        
+        
+
+        
         self.statusBarBackground = bar;
         [self.view addSubview:self.statusBarBackground];
     }
@@ -961,8 +973,97 @@
     }
 }
 
+float DARK_THEME = false, THEME_CHANGED = false;
+
+NSMutableString *USER_HASH_ADS;
+
+float HAD_DARK_THEME = false;
+
+
++ (NSDictionary*) percentEncodeDictionayValues:(NSDictionary*) dict
+{
+    NSMutableDictionary* edict=[NSMutableDictionary dictionaryWithDictionary:dict];
+
+    NSMutableCharacterSet* URLQueryPartAllowedCharacterSet = [[NSCharacterSet URLQueryAllowedCharacterSet] mutableCopy];
+    [URLQueryPartAllowedCharacterSet removeCharactersInString:@"?&=@+/'"];
+
+    for(NSString* key in [dict allKeys])
+    {
+        if([dict[key] isKindOfClass:[NSString class]])
+            edict[key] = [dict[key] stringByAddingPercentEncodingWithAllowedCharacters:URLQueryPartAllowedCharacterSet];
+    }
+    return edict;
+}
+
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler
 {
+    
+    if (@available(iOS 11.0, *)) {
+        WKHTTPCookieStore *cookieStore = _wkWebview.configuration.websiteDataStore.httpCookieStore;
+        [cookieStore getAllCookies:^(NSArray<NSHTTPCookie *> * _Nonnull cookies) {
+           NSHTTPCookie *cookie;
+            for (cookie in cookies)
+            {
+                if ([[cookie valueForKey:@"name"]  isEqual: @"nplh"]){
+                    USER_HASH_ADS = [cookie valueForKey:@"value"];
+                    NSString *URL_GETINFO = [NSString stringWithFormat:@"https://postearly.com/getuserinfofromcookie/%@", USER_HASH_ADS];
+
+                    NSURLRequest *request = [[NSURLRequest alloc] initWithURL:[NSURL URLWithString: URL_GETINFO]];
+                    [NSURLConnection sendAsynchronousRequest:request
+                                                       queue:[NSOperationQueue mainQueue]
+                                           completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
+                        
+                        NSString *myString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                                               
+                        HAD_DARK_THEME = DARK_THEME;
+                        
+                        if ([myString rangeOfString:@"dark_mode_status\":1"].location == NSNotFound) {
+                            DARK_THEME = false;
+                        } else {
+                            DARK_THEME = true;
+                        }
+                        
+                        if (HAD_DARK_THEME != DARK_THEME) {
+                            THEME_CHANGED = true;
+                        } else {
+                            THEME_CHANGED = false;
+                        }
+                            
+                        
+                        
+                        if (!DARK_THEME && THEME_CHANGED) {
+                            [self.statusBarBackground removeFromSuperview];
+                            UIToolbar *bar = [[UIToolbar alloc] init];
+                            bar.barStyle = UIStatusBarStyleDefault;
+                            [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleDefault animated:YES];
+                            bar.backgroundColor = [UIColor colorWithRed:250.0f/255.0f green:250.0f/255.0f blue:250.0f/255.0f alpha:1.0];
+                            self.statusBarBackground = bar;
+                            [self.view addSubview:self.statusBarBackground];
+                        }
+                        
+                        if (DARK_THEME && THEME_CHANGED) {
+                            [self.statusBarBackground removeFromSuperview];
+                            UIToolbar *bar = [[UIToolbar alloc] init];
+                            bar.barStyle = UIStatusBarStyleLightContent;
+                            [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent animated:YES];
+                            bar.backgroundColor = [UIColor colorWithRed:48.0f/255.0f green:48.0f/255.0f blue:48.0f/255.0f alpha:1.0];
+                            self.statusBarBackground = bar;
+                            [self.view addSubview:self.statusBarBackground];
+                        }
+                        
+                        THEME_CHANGED = false;
+                
+                                           }];
+                    
+                    
+                    
+                }
+            }
+    }];
+    }
+    
+    
+
     [[LEANDocumentSharer sharedSharer] receivedWebviewResponse:navigationResponse.response];
     
     if (navigationResponse.canShowMIMEType) {
@@ -2077,8 +2178,12 @@
     [self didFinishLoad];
 }
 
+
+
+
 - (void)didFinishLoad
 {
+
     dispatch_async(dispatch_get_main_queue(), ^{
         [self showWebview];
         

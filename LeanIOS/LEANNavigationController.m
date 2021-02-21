@@ -60,6 +60,7 @@
             self.view.backgroundColor = [UIColor whiteColor];
         }
     }
+    
 
     UIColor *titleColor = [UIColor colorNamed:@"titleColor"];
     self.navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: titleColor};
