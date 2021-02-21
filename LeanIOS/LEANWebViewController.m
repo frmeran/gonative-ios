@@ -1245,6 +1245,10 @@ float HAD_DARK_THEME = false;
             return NO;
         }
         
+    
+
+
+        
         if ([@"webview" isEqualToString:url.host]) {
             if ([@"/clearCache" isEqualToString:url.path]) {
                 NSLog(@"Clearing webview cache");
@@ -1252,6 +1256,8 @@ float HAD_DARK_THEME = false;
                                 WKWebsiteDataTypeMemoryCache, nil];
                 [[WKWebsiteDataStore defaultDataStore] removeDataOfTypes:types modifiedSince:[NSDate dateWithTimeIntervalSince1970:0] completionHandler:^{
                     // do nothing
+                    NSHTTPCookieStorage *cookieStorage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+                    [cookieStorage removeCookiesSinceDate:[NSDate dateWithTimeIntervalSince1970:0]];
                 }];
             }
             
@@ -2780,9 +2786,9 @@ float HAD_DARK_THEME = false;
         CGSize statusSize = [UIApplication sharedApplication].statusBarFrame.size;
         CGFloat height = MIN(statusSize.height, statusSize.width);
         // fix for double height status bar on non-iPhoneX
-        if (height == 40) {
-            height = 20;
-        }
+//        if (height == 40) {
+//            height = 20;
+//        }
         CGFloat width = MAX(statusSize.height, statusSize.width);
         self.statusBarBackground.frame = CGRectMake(0, 0, width, height);
     }
